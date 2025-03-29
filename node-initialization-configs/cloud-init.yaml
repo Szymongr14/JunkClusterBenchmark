@@ -1,0 +1,71 @@
+#cloud-config
+packages:
+  - dnsmasq
+  - tftpd-hpa
+  - syslinux-common
+  - wget
+
+write_files:
+  - path: /etc/netplan/01-netcfg.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            dhcp4: true
+            gateway4: 192.168.0.1
+            nameservers:
+              addresses: [1.1.1.1]
+
+  - path: /etc/dnsmasq.d/pxe.conf
+    content: |
+      # Disable built-in DNS
+      port=0
+
+      # Listen only on PXE server interface
+      interface=eth0
+      bind-interfaces
+
+      # Enable PXE proxy-DHCP mode
+      dhcp-range=192.168.0.0,proxy
+
+      # PXE bootloader (for BIOS clients)
+      dhcp-boot=pxelinux.0
+
+      # Enable TFTP
+      enable-tftp
+      tftp-root=/srv/tftp
+
+      # Optional menu label
+      pxe-service=x86PC, "Boot from LAN (BIOS)", pxelinux.0
+
+      # Logging (optional but useful)
+      log-dhcp
+      log-queries
+
+runcmd:
+  - netplan apply
+
+  # Create TFTP directory structure
+  - mkdir -p /srv/tftp /srv/tftp/pxelinux.cfg
+
+  # Copy BIOS bootloader files
+  - cp /usr/lib/PXELINUX/pxelinux.0 /srv/tftp/
+  - cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /srv/tftp/
+
+  # Download netboot.xyz (BIOS-compatible)
+  - wget -O /srv/tftp/netboot.xyz.lkrn https://boot.netboot.xyz/ipxe/netboot.xyz.lkrn
+
+  # Write PXE menu
+  - |
+    echo 'DEFAULT netboot
+    LABEL netboot
+    MENU LABEL Boot netboot.xyz
+    KERNEL netboot.xyz.lkrn' > /srv/tftp/pxelinux.cfg/default
+
+  # Fix permissions
+  - chmod -R a+r /srv/tftp
+
+  # Restart services
+  - systemctl restart dnsmasq
+  - systemctl restart tftpd-hpa

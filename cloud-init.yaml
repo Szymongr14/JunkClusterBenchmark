@@ -1,7 +1,0 @@
-#cloud-config
-packages:
-  - dnsmasq
-  - tftpd-hpa
-  - wget
-
-
