@@ -1,7 +1,6 @@
 #cloud-config
 packages:
   - dnsmasq
-  - tftpd-hpa
   - syslinux-common
   - wget
 
@@ -68,4 +67,3 @@ runcmd:
 
   # Restart services
   - systemctl restart dnsmasq
-  - systemctl restart tftpd-hpa
