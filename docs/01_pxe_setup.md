@@ -1,6 +1,11 @@
-# PXE Boot Server Setup with dnsmasq
+# Netboot.xyz setup with dnsmasq
 
-In this tutorial, we’ll create a PXE server that allows nodes to boot an operating system over the network. This is the foundation for fully automating node initialization in our cluster project.
+In this step, we focus on using netboot.xyz, which is a powerful tool for interactive OS installation over the network.
+We intentionally chose to set everything up manually with dnsmasq, pxelinux, and netboot.xyz to get hands-on experience and better understand how PXE booting works under the hood.**
+
+In the next step, we’ll make things a bit different — instead of manually configuring pxelinux, we’ll use the official **Ubuntu Server netboot** image and provide an autoinstall file to automate the entire OS installation process across our nodes.
+
+**👉 If you're not interested in exploring netboot.xyz, you can skip the "Prepare the TFTP Root Directory" section below. The upcoming step will use a preconfigured Ubuntu netboot image, which simplifies the process.**
 
 ## 🧠 What is PXE?
 
@@ -53,7 +58,7 @@ If you decided to follow this tutorial on real machines, the first step is to ch
 
 Once enabled, save and exit the BIOS settings.
 
-While it’s possible to set up PXE server (dnsmasq + TFTP) in an isolated container or VM, for simplicity and reliability we recommend running it directly on a bare-metal host or bridged VM where you can control the network interface easily.
+⚠️ While it’s possible to set up PXE server (dnsmasq + TFTP) in an isolated container (**LXD**, **Docker**) or **VM**, for simplicity and reliability we recommend running it directly on a bare-metal host or bridged VM where you can control the network interface easily.
 
 ### 2. Install required packages
 
@@ -98,9 +103,10 @@ wget -O /srv/tftp/netboot.xyz.lkrn https://boot.netboot.xyz/ipxe/netboot.xyz.lkr
 ``` bash
 cat <<EOF | sudo tee /srv/tftp/pxelinux.cfg/default > /dev/null
 DEFAULT netboot
+
 LABEL netboot
-MENU LABEL Boot netboot.xyz
-KERNEL netboot.xyz.lkrn
+   MENU LABEL Boot netboot.xyz
+   KERNEL netboot.xyz.lkrn
 EOF
 ```
 
@@ -119,7 +125,7 @@ Create a separate PXE-specific config, e.g. `/etc/dnsmasq.d/pxe.conf` and write 
 port=0
 
 # Listen only on PXE server interface
-interface="wlp2s0"
+interface="<interface-name>"
 bind-interfaces
 
 # Enable PXE proxy-DHCP mode
@@ -139,6 +145,8 @@ pxe-service=x86PC, "Boot from LAN (BIOS)", pxelinux.0
 log-dhcp
 log-queries
 ```
+
+Replace `<interface-name>` with your real interface name such as `eth0`, `wlp2s0` etc. (you could check it using `ip a` command)
 
 After saving config file, restart `dnsmasq` service
 
@@ -162,10 +170,16 @@ sudo systemctl restart dnsmasq
 
 Once **PXE** is working, we’ll move on to:
 
-- Automating Debian installations with **Preseed**
+- Automating Ubuntu server installations with **Autoinstall**
 
 - Configuring nodes using **cloud-init**
 
 - Using **Ansible** to provision software and workloads
 
-### ➡️ Continue to: Automated Debian Installation
+### ➡️ Continue to: Automated Ubuntu Server Installation
+
+## References
+
+- <https://wiki.archlinux.org/title/Syslinux#PXELINUX>
+- <https://wiki.archlinux.org/title/Preboot_Execution_Environment>
+- <https://netboot.xyz/docs>
