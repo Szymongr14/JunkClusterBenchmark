@@ -1,4 +1,4 @@
-# Netboot.xyz setup with dnsmasq
+# Netboot.xyz setup with `dnsmasq`
 
 In this step, we focus on using netboot.xyz, which is a powerful tool for interactive OS installation over the network.
 We intentionally chose to set everything up manually with dnsmasq, pxelinux, and netboot.xyz to get hands-on experience and better understand how PXE booting works under the hood.**
@@ -6,6 +6,16 @@ We intentionally chose to set everything up manually with dnsmasq, pxelinux, and
 In the next step, we’ll make things a bit different — instead of manually configuring pxelinux, we’ll use the official **Ubuntu Server netboot** image and provide an autoinstall file to automate the entire OS installation process across our nodes.
 
 **👉 If you're not interested in exploring netboot.xyz, you can skip the "Prepare the TFTP Root Directory" section below. The upcoming step will use a preconfigured Ubuntu netboot image, which simplifies the process.**
+
+## 🔐 PXE Boot Security Note
+
+PXE boot is **not secure on untrusted networks**. It uses:
+
+- Unauthenticated DHCP (any device can respond)
+- Unencrypted TFTP (no identity or integrity checks)
+- No file verification (especially in BIOS setups)
+
+> **Avoid enabling PXE boot on shared or public networks without strict controls**
 
 ## 🧠 What is PXE?
 
@@ -125,11 +135,11 @@ Create a separate PXE-specific config, e.g. `/etc/dnsmasq.d/pxe.conf` and write 
 port=0
 
 # Listen only on PXE server interface
-interface="<interface-name>"
+interface="<INTERFACE_NAME>"
 bind-interfaces
 
 # Enable PXE proxy-DHCP mode
-dhcp-range=192.168.0.0,proxy
+dhcp-range=<IP_SUBNET>,proxy
 
 # PXE bootloader (for BIOS clients)
 dhcp-boot=pxelinux.0
@@ -146,7 +156,9 @@ log-dhcp
 log-queries
 ```
 
-Replace `<interface-name>` with your real interface name such as `eth0`, `wlp2s0` etc. (you could check it using `ip a` command)
+- Replace `<INTERFACE_NAME>` with your real interface name such as `eth0`, `wlp2s0` etc. (you could check it using `ip a` command)
+
+- Replace `<IP_SUBNET>` with your real ip subnet. For example, if your interface is `192.168.0.x/24`, use `dhcp-range=192.168.0.0,proxy`.
 
 After saving config file, restart `dnsmasq` service
 
