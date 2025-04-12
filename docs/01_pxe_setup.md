@@ -14,29 +14,28 @@ In this tutorial, we’ll create a PXE server that allows nodes to boot an opera
 
 ## ❓ Why `dnsmasq`?
 
-Many consumer routers **cannot serve TFTP**, and most cannot customize PXE bootloader responses.
+Many consumer routers **cannot serve TFTP**, and most cannot customize PXE bootloader responses. In our setup, we still use the router’s built-in DHCP server to assign IP addresses, but we run `dnsmasq` as a **proxy DHCP (PXE-specific responder)** that only replies with:
 
-That’s why we run our own PXE server using dnsmasq, which combines:
+- The TFTP server IP address
 
-- A lightweight DHCP server (assigns IP addresses to PXE clients)
+- The bootloader filename to download
 
-- A built-in TFTP server (sends bootloader files)
+We point PXE clients to `dnsmasq` itself for the TFTP server, because it includes a lightweight built-in TFTP service. This makes it simple to serve bootloader files like `pxelinux.0` from the same place.
 
-- Simple configuration (perfect for isolated or offline LAN setups)
-
-## 🗈 PXE Boot Workflow
+## PXE Boot Workflow
 
 Here’s how PXE boot works in our setup:
 
-1. Node powers on with PXE enabled in BIOS.
-2. Node sends a DHCP broadcast to request an IP.
-3. dnsmasq (our PXE server) responds:
-   - Assigns an IP address
-   - Tells the node where to download the bootloader via TFTP
-4. Node downloads bootloader (e.g., netboot.xyz)
-5. Node boots into installer or live environment
+1. Node powers on with PXE enabled in BIOS
+2. Node sends a DHCP broadcast to request an IP
+3. Separate DHCP server responds with an IP address
+4. dnsmasq (our PXE server) responds with an IP of a TFTP server
+5. Node downloads bootloader (e.g., netboot.xyz)
+6. Node boots into installer or live environment
 
 ![PXE boot diagram](../assets/2025-03-26-171147_hyprshot.png)
+
+In our setup **DHCP proxy server** and **TFTP server** are the same machines.
 
 ## ⚙️ Setting Up dnsmasq PXE Server
 
@@ -94,7 +93,7 @@ cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /srv/tftp
 wget -O /srv/tftp/netboot.xyz.lkrn https://boot.netboot.xyz/ipxe/netboot.xyz.lkrn
 ```
 
-#### 3. Create PXE menu
+#### 3. Create PXE menu and save it to `/srv/tftp/pxelinux.cfg/default`
 
 ``` bash
 cat <<EOF | sudo tee /srv/tftp/pxelinux.cfg/default > /dev/null
@@ -111,25 +110,62 @@ This menu tells `pxelinux.0` to:
 - Display the option **Boot netboot.xyz**
 - Load the `netboot.xyz.lkrn` kernel file when selected
 
+### 3. Configure dnsmasq
 
+Create a separate PXE-specific config, e.g. `/etc/dnsmasq.d/pxe.conf` and write to it:
 
+``` bash
+# Disable built-in DNS
+port=0
 
+# Listen only on PXE server interface
+interface="wlp2s0"
+bind-interfaces
 
+# Enable PXE proxy-DHCP mode
+dhcp-range=192.168.0.0,proxy
 
+# PXE bootloader (for BIOS clients)
+dhcp-boot=pxelinux.0
 
+# Enable TFTP
+enable-tftp
+tftp-root=/srv/tftp
 
+# Optional menu label
+pxe-service=x86PC, "Boot from LAN (BIOS)", pxelinux.0
 
+# Logging
+log-dhcp
+log-queries
+```
 
+After saving config file, restart `dnsmasq` service
+
+``` bash
+sudo systemctl restart dnsmasq
+```
+
+## 🧪 Test it
+
+1. Make sure PXE is enabled in the BIOS of your client device.
+
+2. Connect the client and PXE server to the same LAN.
+
+3. Boot the client – it should get an IP and download `pxelinux.0` and `netboot.xyz.lkrn`
+
+4. You should see the netboot.xyz menu
+
+![netboot.xyz menu](../assets/Live-CDs.png)
 
 ## 🔁 Next Steps
 
-Once PXE is working, we’ll move on to:
+Once **PXE** is working, we’ll move on to:
 
-- Automating Debian installations with Preseed
+- Automating Debian installations with **Preseed**
 
-- Configuring nodes using cloud-init
+- Configuring nodes using **cloud-init**
 
-- Using Ansible to provision software and workloads
+- Using **Ansible** to provision software and workloads
 
 ### ➡️ Continue to: Automated Debian Installation
-
