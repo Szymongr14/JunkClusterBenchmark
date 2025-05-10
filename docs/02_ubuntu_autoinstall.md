@@ -1,18 +1,8 @@
-# Zarys i komendy, zeby odtworzyc(I will create full tutorial later)
+# Ubuntu Autoinstall Tutorial
 
-Wstep na podstawie <https://canonical-subiquity.readthedocs-hosted.com/en/latest/intro-to-autoinstall.html>
+This guide shows how to automatically install Ubuntu Server using PXE boot and the modern autoinstall method. Instead of using old netboot images, we download the official Ubuntu ISO, extract the kernel and initrd for PXE boot, and serve the full ISO and configuration files (user-data and meta-data) over HTTP. This way, we can install Ubuntu on many machines without manual steps, using a fast and reliable setup.
 
-dlaczego uzywamy ubuntu netboot i autoinstall
-
----
-
-For Ubuntu Server autoinstallation (since 20.04+), you typically create one YAML file that combines:
-
-Cloud-init directives (e.g. user-data for configuring users, SSH keys, packages, etc.)
-
-An autoinstall section inside that file for automating the actual OS installation process.
-
-In practice, you place everything inside a single user-data file, and if you're using PXE or ISO with autoinstall, that file is passed to the installer via kernel parameters or loaded from a remote URL.
+[tutaj diagram workflow]
 
 ## 🛠️ PXE Boot Setup for Ubuntu Autoinstall
 
@@ -136,6 +126,12 @@ autoinstall:
       - openssh-server
 ```
 
+### 🔐 Important Notes
+
+- The username is: `ubuntu`
+- The password is: `ubuntu` (hashed in the config using **SHA-512**)
+- SSH is enabled, but password login is disabled (`ssh_pwauth: false`), so you must generate and use an SSH key via `ssh-keygen` command and replace existing one in `ssh_authorized_keys`.
+
 ### 7. Creating the meta-data File
 
 Ubuntu’s autoinstall process uses the cloud-init nocloud-net datasource, which expects two files:
@@ -166,12 +162,103 @@ At this point, your /var/www/html/server directory must contain:
 
 This directory is served over HTTP and used by the installer during the PXE-based autoinstall process.
 
+### 9. Create PXELINUX Configuration Directory and Boot Menu
 
-### 🔐 Important Notes
+To control what appears when a machine boots via PXE, we need to create a PXELINUX configuration directory and define a default boot menu file inside it.
 
-- The username is: `ubuntu`
-- The password is: `ubuntu` (hashed in the config using **SHA-512**)
-- SSH is enabled, but password login is disabled (`ssh_pwauth: false`), so you must generate and use an SSH key via `ssh-keygen` command and replace existing one in `ssh_authorized_keys`.
+Create the directory:
+
+```bash
+sudo mkdir -p /srv/tftp/ubuntu-autoinstall/pxelinux.cfg
+```
+
+Create the default PXE menu file:
+
+```bash
+sudo vim /srv/tftp/ubuntu-autoinstall/pxelinux.cfg/default
+```
+
+Paste the following configuration into the file:
+
+```bash
+DEFAULT ubuntu-autoinstall
+
+LABEL ubuntu-autoinstall
+  KERNEL vmlinuz
+  INITRD initrd
+  APPEND root=/dev/ram0 ramdisk_size=1500000 autoinstall ip=dhcp cloud-config-url=http://192.168.1.27/server/user-data url=http://192.168.1.27/server/noble-live-server-amd64.iso ds=nocloud;s=http://192.168.1.27/
+```
+
+#### 🔧 Explanation of the entry
+
+- `DEFAULT` install1: Automatically boots into the install1 option without showing a menu.
+
+- `KERNEL` and `INITRD`: Refer to the Ubuntu kernel and initramfs files that you extracted earlier from the ISO.
+
+- `APPEND`: Specifies boot parameters for the installer:
+
+- `ip=dhcp`: Enables automatic IP configuration via DHCP.
+
+- `autoinstall`: Triggers the unattended installation process.
+
+- `cloud-config-url`: Directs the installer to download the user-data file from your HTTP server.
+
+- `url`: Provides the location of the full ISO image.
+
+- `ds=nocloud`: Instructs cloud-init to use the NoCloud datasource via HTTP.
+
+#### ⚠️ Important Note
+
+Replace all instances of `192.168.1.27` with the actual IP address of your HTTP server — the machine hosting the ISO, `user-data`, and `meta-data` files.
+
+You can find this IP address by running:
+
+```bash
+ip a
+```
+
+### 10. Directory Structure Overview
+
+To ensure that all PXE boot components and autoinstall files are correctly served to client machines, you should verify that the following directory structure exists on your server:
+
+```bash
+/srv/tftp/ubuntu-autoinstall/
+├── pxelinux.0              # PXE bootloader binary
+├── ldlinux.c32             # Required SYSLINUX module
+├── vmlinuz                 # Ubuntu kernel extracted from ISO
+├── initrd                  # Ubuntu initramfs extracted from ISO
+└── pxelinux.cfg/
+    └── default             # PXELINUX menu configuration file
+
+/var/www/html/server/
+├── noble-live-server-amd64.iso  # Official Ubuntu ISO image
+├── user-data                   # Autoinstall configuration (YAML format)
+└── meta-data                   # Required (can be empty) metadata file
+```
+
+- The `/srv/tftp/ubuntu-autoinstall/` directory is used by the TFTP server (via `dnsmasq`) to serve the PXE bootloader and kernel files.
+
+- The `/var/www/html/server/` directory is served over HTTP (using `nginx`) and contains the full Ubuntu ISO and autoinstall configuration files.
+
+Both directories must be accessible from the PXE booting client: TFTP for the initial boot and HTTP for loading the OS and configuration.
+
+## 🧪 Test It
+
+1. Make sure **PXE boot** is enabled in the BIOS or UEFI settings of the client machine.
+
+2. Connect both the PXE client and the PXE/HTTP server to the **same LAN*.
+
+3. Power on the client – it should:
+
+    - Receive an IP address via **DHCP** from `dnsmasq`
+
+    - Download `pxelinux.0`, `ldlinux.c32`, `vmlinuz`, and `initrd` from the **TFTP server**
+
+    - Load and execute the PXELINUX menu from `pxelinux.cfg/default`
+
+4. The client should **automatically boot into Ubuntu autoinstall**, fetch the ISO and configuration files over HTTP, and begin a fully unattended OS installation.
+
+## ➡️ Continue to: Cluster Initialization and Ray Benchmarking Setup
 
 ## References
 
