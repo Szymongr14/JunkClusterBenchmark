@@ -1,0 +1,5 @@
+- name: stop ray
+  shell: |
+    cd /home/ubuntu/ray_worker && /usr/bin/poetry run ray stop
+  args:
+    executable: /bin/bash

@@ -1,0 +1,19 @@
+- name: Prepare worker nodes
+  hosts: ray_worker_nodes
+  become: true
+  tasks:
+    - name: Copy config with SCP
+      import_role:
+        name: ray
+        tasks_from: prepare_scp.yaml
+
+    - name: Install Poetry
+      import_role:
+        name: ray
+        tasks_from: install_poetry.yaml
+
+    - name: Copy Poetry configuration files
+      import_role:
+        name: ray
+        tasks_from: copy_poetry_configuration_files.yaml
+

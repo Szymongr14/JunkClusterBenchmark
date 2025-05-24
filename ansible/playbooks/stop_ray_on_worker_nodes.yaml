@@ -1,0 +1,8 @@
+- name: Stop Ray on worker nodes
+  hosts: ray_worker_nodes
+  become: true
+  tasks:
+    - name: Stop Ray worker
+      import_role:
+        name: ray
+        tasks_from: stop_ray_on_worker_nodes.yaml

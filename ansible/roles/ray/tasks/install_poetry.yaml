@@ -1,0 +1,4 @@
+- name: install poetry via apt
+  apt:
+    name: python3-poetry
+    state: present

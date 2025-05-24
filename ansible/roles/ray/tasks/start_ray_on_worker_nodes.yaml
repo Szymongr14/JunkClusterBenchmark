@@ -1,0 +1,5 @@
+- name: Install dependencies using Poetry and run Ray worker
+  shell: |
+    cd /home/ubuntu/ray_worker && /usr/bin/poetry update && ./start_ray.sh
+  args:
+    executable: /bin/bash

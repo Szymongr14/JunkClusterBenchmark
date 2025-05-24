@@ -1,0 +1,10 @@
+- name: copy poetry env dir to node
+  copy:
+    src: ../files/
+    dest: /home/{{ ansible_user }}/ray_worker/
+
+- name: Make all *.sh files in ray_worker executable
+  shell: |
+    chmod +x /home/{{ ansible_user }}/ray_worker/*.sh
+  args:
+    executable: /bin/bash

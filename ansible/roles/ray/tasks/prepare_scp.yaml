@@ -1,0 +1,11 @@
+    - name: Ensure sftp Subsystem is correctly set
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^Subsystem\s+sftp'
+        line: 'Subsystem sftp /usr/lib/openssh/sftp-server'
+        state: present
+
+    - name: Restart SSH to apply sftp config fix
+      systemd_service:
+        name: ssh
+        state: restarted
