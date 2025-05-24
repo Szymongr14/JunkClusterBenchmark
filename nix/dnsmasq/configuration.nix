@@ -1,13 +1,16 @@
-{pkgs, ...}: {
+{pkgs, ...}: let
+  # Replace with your real ip subnet.
+  # For example, if your interface is 192.168.3.x/24, use dhcp-range=192.168.0.0,proxy
+  myDhcpRange = "192.168.3.0,proxy";
+
+  # tftpContent is a derivation that contains all files we want to serve via tftp
+  # We build this derivation in tftp-content.nix file
+  tftpContent = import ./tftp-content.nix {inherit pkgs;};
+in {
   networking.hostName = "pxe-vm";
   networking.useDHCP = true;
 
-  services.dnsmasq = let
-    # Replace with your real ip subnet.
-    # For example, if your interface is 192.168.3.x/24, use dhcp-range=192.168.0.0,proxy
-    myDhcpRange = "192.168.3.0,proxy";
-    tftpContent = import ./tftp-content.nix {inherit pkgs;};
-  in {
+  services.dnsmasq = {
     enable = true;
     settings = {
       # Disable built-in DNS
@@ -42,6 +45,14 @@
   environment.systemPackages = with pkgs; [
     syslinux # for pxelinux.0, ldlinux.c32, etc.
   ];
+
+  systemd.tmpfiles.rules = [
+    # L+ means: create a symlink.
+    # If it's a symlink pointing elsewhere, update it.
+    # Symlink target is the store path of tftpContent
+    "L+ /srv/tftp-root - - - - ${tftpContent}"
+  ];
+
 
   users.users.root.initialPassword = "nixos";
 
