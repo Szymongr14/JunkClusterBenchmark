@@ -1,5 +1,13 @@
-- name: Install dependencies using Poetry and run Ray worker
+- name: Install dependencies using Poetry
   shell: |
-    cd /home/ubuntu/ray_worker && /usr/bin/poetry update && ./start_ray.sh
+    cd /home/ubuntu/ray_worker
+    /usr/bin/poetry install
   args:
+    executable: /bin/bash
+
+- name: Start Ray worker using Poetry
+  shell: |
+    /usr/bin/poetry run ray start --address='{{ ray_head_address }}'
+  args:
+    chdir: /home/ubuntu/ray_worker
     executable: /bin/bash

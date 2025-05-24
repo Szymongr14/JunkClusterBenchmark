@@ -1,112 +1,133 @@
-# Ray configuration
+# ⚙️ Setting Up Ray Worker Nodes with Ansible
 
-## Head node
+Once your worker machines are automatically provisioned via **Ubuntu autoinstall**, they are accessible via SSH from the head machine. This enables you to configure them remotely using Ansible.
 
-Head node is a ray node which controls all worker nodes.
+We’ll now:
 
-We run the head node on a host machine (not in the cluster).
+1. Install Ray and dependencies on all worker nodes
+
+2. Start Ray worker processes
+
+3. Later, stop them cleanly when needed
+
+## 🔧 Prerequisites
+
+- **Install Ansible on the Head Machine:** [Ansible Installation Guide](https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html)
+- **Update the Ansible Inventory File**
+  Add the IP addresses of your worker nodes under the ray_worker_nodes group in the `ansible/hosts` file:
+
+  ### Example `hosts`
+
+  ```bash
+  [ray_worker_nodes]
+  192.168.0.101
+  192.168.0.102
+  192.168.0.103
+  ```
+
+## 📂 Ansible Project Structure
+
+Directory with Ansible configuration files in our project looks like that
+
+```markdown
+ansible/
+├── ansible.cfg
+├── hosts
+├── group_vars/
+│   ├── ray_worker_nodes.yaml
+├── playbooks/
+│   ├── prepare_worker_nodes.yaml
+│   ├── start_ray_on_worker_nodes.yaml
+│   └── stop_ray_on_worker_nodes.yaml
+└── roles/
+    └── ray/
+        ├── files/
+        │   ├── pyproject.toml
+        └── tasks/
+            ├── copy_poetry_configuration_files.yaml
+            ├── install_poetry.yaml
+            ├── prepare_scp.yaml
+            ├── start_ray_on_worker_nodes.yaml
+            └── stop_ray_on_worker_nodes.yaml
+```
+
+Each playbook in the playbooks/ directory corresponds to a major automation task.
+
+## Run Ray Head Node Locally (On Head Machine)
+
+You don’t need Ansible to start the Ray head — use Poetry locally:
+
+### 1. Initialize a Python project
 
 ```bash
-update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
-update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
-curl -sSL https://install.python-poetry.org | python3.10 -
-ray stop
-ray start --head --port=6379 --dashboard-host=0.0.0.0
+poetry init
 ```
 
-## Worker node
+(Just press enter for default prompts.)
 
-Worker node is a ray node which does the computing.
-
-cloud-init.yml
-
-```yml
-autoinstall:
-  version: 1
-  apt:
-    disable_components: []
-    fallback: offline-install
-  identity:
-    hostname: ray-worker
-    username: ubuntu
-    password: "$6$exDY1mhS4KUYCE/2$zmn9ToZwTKLhCw.b4/b.ZRTIZM30JZ4QrOQ2aOXJ8yk96xpcCof0kxKwuX1kqLG/ygbJ1f8wxED22bTL4F46P0"
-  package_update: false
-  package_upgrade: false
-
-  user-data:
-    ssh_pwauth: false
-    users:
-    - name: ubuntu
-      ssh_authorized_keys:
-        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvUi/VAnbhC/QJkW9zkxA5sFtRs9HlK3gB3bt/oh8eN przyklad@test"
-
-    package_update: true
-    packages:
-      - openssh-server
-      - curl
-      - build-essential
-      - python3.10
-      - python3.10-venv
-      - python3.10-dev
-
-    runcmd:
-      - pip3 install --upgrade pip
-      - pip3 install "ray[default]"
-      - ray stop
-      - ray start --address=192.168.0.24:6379
-
-```
-
-For each node:
-
-### 1. Install poetry
+### Install Ray 
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+poetry add ray
 ```
 
-### 2. Realod PATH
+### Start the Ray Head
 
 ```bash
-source ~/.profile
+poetry run ray start --head --port=6379
 ```
 
-### 3. Install ray via poetry
+You should see something like:
 
 ```bash
-mkdir ray_worker && cd ray_worker
-poetry init --name ray_worker --no-interaction
-poetry add "ray[default]"
+Local node IP: 192.168.1.10
+Ray runtime started.
 ```
 
-### 4. Script which automatically starts ray worker after boot
+Copy the IP — your workers will connect to it automatically using Ansible.
+
+➡️ Now that you know the head IP, update it in your Ansible variables by editing: `ansible/group_vars/ray_worker_nodes.yaml` file.
+
+Example:
+
+```yaml
+ray_head_address: 192.168.1.10:6379
+```
+
+This will be used by Ansible to start Ray on each worker and connect it to the head node.
+
+## Step-by-Step Commands to run Ray on worker nodes
+
+### 1. Prepare All Worker Nodes
+
+This will install Poetry, Ray, and copy necessary scripts:
 
 ```bash
-#!/bin/bash
-
-# Replace this with your head node's IP
-HEAD_ADDRESS="192.168.1.10:6379"
-
-cd /path/to/ray_worker  # Path to your minimal Poetry project
-poetry run ray start --address="$HEAD_ADDRESS"
+ansible-playbook playbooks/prepare_worker_nodes.yaml --ask-become-pass
 ```
 
-### 5. Create service
+### 2. Start Ray Worker Processes
+
+This connects workers to the Ray head:
 
 ```bash
-[Unit]
-Description=Ray Worker Node
-After=network.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=true
-User=ubuntu
-WorkingDirectory=/home/ubuntu/ray_worker
-ExecStart=/home/ubuntu/ray_worker/start_ray_worker.sh
-Restart=on-failure
-Environment=PATH=/home/ubuntu/.local/bin:/usr/bin:/bin
-
-[Install]
-WantedBy=multi-user.target
+ansible-playbook playbooks/start_ray_on_worker_nodes.yaml --ask-become-pass
 ```
+
+### 3. Stop Ray Worker Processes (when needed)
+
+Cleanly stop Ray workers:
+
+```bash
+ansible-playbook playbooks/stop_ray_on_worker_nodes.yaml --ask-become-pass
+```
+
+## ✅ Summary
+
+- We used **Ubuntu autoinstall** to provision all nodes and enable SSH
+
+- Then we used **Ansible** to automate Ray setup and lifecycle on each worker
+
+- We started the **Ray head locally** using Poetry
+
+## ➡️ Next: We'll benchmark the cluster and run distributed jobs to evaluate performance

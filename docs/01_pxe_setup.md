@@ -85,7 +85,7 @@ The key files are:
 
 - `pxelinux.0` – The PXE bootloader from the SYSLINUX project. It’s the first file the PXE client downloads and executes. It handles showing a menu and loading the kernel.
 
- - `ldlinux.c32` – A required module that provides runtime support for pxelinux.0. It must be in the same directory.
+- `ldlinux.c32` – A required module that provides runtime support for pxelinux.0. It must be in the same directory.
 
 - `netboot.xyz.lkrn` – A self-contained kernel provided by netboot.xyz that allows users to select and install various OSes over the network.
 

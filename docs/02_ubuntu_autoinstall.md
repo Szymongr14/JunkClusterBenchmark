@@ -8,6 +8,10 @@ This guide shows how to automatically install Ubuntu Server using PXE boot and t
 
 This guide shows how to configure a PXE environment using `dnsmasq`, `pxelinux`, and `Ubuntu autoinstall`. It focuses on a legacy approach using `pxelinux.0`.
 
+### 📡 Assign Static IPs to Worker Nodes
+
+To simplify Ansible setup and ensure predictable SSH connectivity, it's recommended to assign **static IP addresses** to your worker nodes (e.g., via your router’s DHCP settings). This way, you can reliably list them in the Ansible `hosts` file in the next section.
+
 ### 1. Create TFTP Root Directory
 
 Create the directory where TFTP files will be served from:
