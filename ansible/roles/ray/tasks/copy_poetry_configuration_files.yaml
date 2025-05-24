@@ -10,8 +10,3 @@
     owner: ubuntu
     group: ubuntu
     recurse: yes
-
-- name: Make all .sh files executable in ray_worker
-  become: true
-  shell: |
-    find /home/ubuntu/ray_worker -type f -name "*.sh" -exec chmod +x {} \;

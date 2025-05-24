@@ -11,6 +11,6 @@
   become: true
   become_user: ubuntu
   shell: |
-    nohup /home/ubuntu/.local/bin/poetry run ray start --address='192.168.0.24:6379' > /home/ubuntu/ray_worker.log 2>&1 &
+    nohup /home/ubuntu/.local/bin/poetry run ray start --address='{{ ray_head_address }}' > /home/ubuntu/ray_worker.log 2>&1 &
   args:
     chdir: /home/ubuntu/ray_worker
