@@ -65,7 +65,7 @@ poetry init
 
 (Just press enter for default prompts.)
 
-### Install Ray 
+### Install Ray
 
 ```bash
 poetry add ray

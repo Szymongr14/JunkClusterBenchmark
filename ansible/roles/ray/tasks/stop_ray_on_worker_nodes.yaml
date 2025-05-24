@@ -1,5 +1,7 @@
-- name: stop ray
+- name: Stop Ray on worker node
+  become: true
+  become_user: ubuntu
   shell: |
-    cd /home/ubuntu/ray_worker && /usr/bin/poetry run ray stop
+    /home/ubuntu/.local/bin/poetry run ray stop
   args:
-    executable: /bin/bash
+    chdir: /home/ubuntu/ray_worker

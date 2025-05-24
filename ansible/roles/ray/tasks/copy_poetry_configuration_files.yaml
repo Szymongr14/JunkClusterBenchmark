@@ -3,8 +3,15 @@
     src: ../files/
     dest: /home/{{ ansible_user }}/ray_worker/
 
-- name: Make all *.sh files in ray_worker executable
+- name: Fix ownership of poetry project directory
+  become: true
+  file:
+    path: /home/ubuntu/ray_worker
+    owner: ubuntu
+    group: ubuntu
+    recurse: yes
+
+- name: Make all .sh files executable in ray_worker
+  become: true
   shell: |
-    chmod +x /home/{{ ansible_user }}/ray_worker/*.sh
-  args:
-    executable: /bin/bash
+    find /home/ubuntu/ray_worker -type f -name "*.sh" -exec chmod +x {} \;

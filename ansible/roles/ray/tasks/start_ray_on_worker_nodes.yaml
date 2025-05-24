@@ -1,13 +1,16 @@
 - name: Install dependencies using Poetry
+  become: true
+  become_user: ubuntu
   shell: |
     cd /home/ubuntu/ray_worker
-    /usr/bin/poetry install
+    /home/ubuntu/.local/bin/poetry update
   args:
     executable: /bin/bash
 
-- name: Start Ray worker using Poetry
+- name: Start Ray worker detached
+  become: true
+  become_user: ubuntu
   shell: |
-    /usr/bin/poetry run ray start --address='{{ ray_head_address }}'
+    nohup /home/ubuntu/.local/bin/poetry run ray start --address='192.168.0.24:6379' > /home/ubuntu/ray_worker.log 2>&1 &
   args:
     chdir: /home/ubuntu/ray_worker
-    executable: /bin/bash

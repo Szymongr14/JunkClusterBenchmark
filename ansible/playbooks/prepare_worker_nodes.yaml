@@ -7,13 +7,28 @@
         name: ray
         tasks_from: prepare_scp.yaml
 
+    - name: Copy Poetry configuration files
+      import_role:
+        name: ray
+        tasks_from: copy_poetry_configuration_files.yaml
+
+    - name: Install Python 3.12
+      import_role:
+        name: ray
+        tasks_from: install_python3.12.yaml
+
     - name: Install Poetry
       import_role:
         name: ray
         tasks_from: install_poetry.yaml
 
-    - name: Copy Poetry configuration files
-      import_role:
-        name: ray
-        tasks_from: copy_poetry_configuration_files.yaml
+    - name: Set Poetry to use Python 3.12
+      become: true
+      become_user: ubuntu
+      shell: |
+        /home/ubuntu/.local/bin/poetry env use python3.12
+      args:
+        chdir: /home/ubuntu/ray_worker
+
+
 

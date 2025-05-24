@@ -1,0 +1,26 @@
+- name: Comment out any 'cdrom' lines in /etc/apt/sources.list
+  become: true
+  replace:
+    path: /etc/apt/sources.list
+    regexp: '^deb\s+.*cdrom'
+    replace: '# \g<0>'
+
+- name: Update apt cache
+  shell: apt update
+  become: true
+
+- name: Install software-properties-common
+  shell: apt install software-properties-common -y
+  become: true
+
+- name: Add deadsnakes PPA
+  shell: add-apt-repository -y ppa:deadsnakes/ppa
+  become: true
+
+- name: Update apt cache after adding PPA
+  shell: apt update
+  become: true
+
+- name: Install Python 3.12 and related packages
+  shell: apt install -y python3.12 python3.12-venv python3.12-dev
+  become: true

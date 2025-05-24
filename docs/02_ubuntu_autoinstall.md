@@ -8,6 +8,11 @@ This guide shows how to automatically install Ubuntu Server using PXE boot and t
 
 This guide shows how to configure a PXE environment using `dnsmasq`, `pxelinux`, and `Ubuntu autoinstall`. It focuses on a legacy approach using `pxelinux.0`.
 
+### ⚠️ Minimum Tested RAM
+
+> **Important:** The minimum tested RAM for a successful PXE-based autoinstall using the Ubuntu Live Server ISO is **4GB**.  
+> Systems with **2GB of RAM may fail** during installation.
+
 ### 📡 Assign Static IPs to Worker Nodes
 
 To simplify Ansible setup and ensure predictable SSH connectivity, it's recommended to assign **static IP addresses** to your worker nodes (e.g., via your router’s DHCP settings). This way, you can reliably list them in the Ansible `hosts` file in the next section.
@@ -76,13 +81,13 @@ cd /var/www/html/server
 Download **Ubuntu ISO** to Web Server Directory:
 
 ```bash
-wget -P /var/www/html/server http://cdimage.ubuntu.com/ubuntu-server/noble/daily-live/current/noble-live-server-amd64.iso
+wget -P /var/www/html/server https://releases.ubuntu.com/focal/ubuntu-20.04.6-live-server-amd64.iso
 ```
 
 Mount the ISO and Extract Kernel + Initrd:
 
 ```bash
-sudo mount /var/www/html/server/noble-live-server-amd64.iso /mnt
+sudo mount /var/www/html/server/https://releases.ubuntu.com/focal/ubuntu-20.04.6-live-server-amd64.iso /mnt
 sudo cp /mnt/casper/{vmlinuz,initrd} /srv/tftp/ubuntu-autoinstall/
 sudo umount /mnt
 ```
@@ -190,7 +195,7 @@ DEFAULT ubuntu-autoinstall
 LABEL ubuntu-autoinstall
   KERNEL vmlinuz
   INITRD initrd
-  APPEND root=/dev/ram0 ramdisk_size=1500000 autoinstall ip=dhcp cloud-config-url=http://192.168.1.27/server/user-data url=http://192.168.1.27/server/noble-live-server-amd64.iso ds=nocloud;s=http://192.168.1.27/
+  APPEND root=/dev/ram0 ramdisk_size=1500000 autoinstall ip=dhcp cloud-config-url=http://192.168.1.27/server/user-data url=http://192.168.1.27/server/ubuntu-20.04.6-live-server-amd64.iso ds=nocloud;s=http://192.168.1.27/
 ```
 
 #### 🔧 Explanation of the entry
@@ -235,7 +240,7 @@ To ensure that all PXE boot components and autoinstall files are correctly serve
     └── default             # PXELINUX menu configuration file
 
 /var/www/html/server/
-├── noble-live-server-amd64.iso  # Official Ubuntu ISO image
+├── ubuntu-20.04.6-live-server-amd64.iso  # Official Ubuntu ISO image
 ├── user-data                   # Autoinstall configuration (YAML format)
 └── meta-data                   # Required (can be empty) metadata file
 ```
@@ -261,6 +266,15 @@ Both directories must be accessible from the PXE booting client: TFTP for the in
     - Load and execute the PXELINUX menu from `pxelinux.cfg/default`
 
 4. The client should **automatically boot into Ubuntu autoinstall**, fetch the ISO and configuration files over HTTP, and begin a fully unattended OS installation.
+
+### ❗ Important Note for 4GB RAM Systems
+
+> ⚠️ On machines with **4GB of RAM**, the installation process may **hang during the “security updates” step** (specifically at `run_unattended_upgrades/cmd-in-target`).  
+> This is a **known issue** caused by limited memory availability during the post-install upgrade phase.  
+![hanging command](../assets/unattendent_upgrades.png)
+> [See more details here](https://askubuntu.com/questions/1390248/ubuntu-20-4-autoinstall-user-data-skip-installing-security-updates)  
+>
+> ✅ You can **safely reboot the machine** at this point — the operating system is **already installed**, and all updates will be completed automatically after the first boot.
 
 ## ➡️ Continue to: Cluster Initialization and Ray Benchmarking Setup
 
