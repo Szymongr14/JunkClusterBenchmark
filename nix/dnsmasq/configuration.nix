@@ -7,9 +7,6 @@
   # We build this derivation in tftp-content.nix file
   tftpContent = import ./tftp-content.nix {inherit pkgs;};
 in {
-  networking.hostName = "pxe-vm";
-  networking.useDHCP = true;
-
   services.dnsmasq = {
     enable = true;
     settings = {
@@ -39,13 +36,8 @@ in {
     };
   };
 
-  networking.firewall.enable = false;
-
-  # PXELINUX and required files
-  environment.systemPackages = with pkgs; [
-    syslinux # for pxelinux.0, ldlinux.c32, etc.
-  ];
-
+  # Symlink tftp-root for convenience (Optional)
+  # Inspect the directory with ls /srv/tftp-root instead of finding /nix/store path
   systemd.tmpfiles.rules = [
     # L+ means: create a symlink.
     # If it's a symlink pointing elsewhere, update it.
@@ -53,7 +45,25 @@ in {
     "L+ /srv/tftp-root - - - - ${tftpContent}"
   ];
 
+  # Configure networking
+  networking = {
+    hostName = "pxe-vm";
+    useDHCP = true;
+    firewall.enable = false;
+  };
 
+  environment.etc."resolv.conf".text = ''
+    # Static /etc/resolv.conf defined in NixOS configuration
+    nameserver 1.1.1.1
+    nameserver 1.0.0.1
+    options edns0
+  '';
+
+  environment.systemPackages = with pkgs; [
+    tcpdump
+  ];
+
+  # Set password
   users.users.root.initialPassword = "nixos";
 
   system.stateVersion = "25.11";
